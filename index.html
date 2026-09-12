@@ -26,21 +26,30 @@
     </div>
 
     <!-- Правая колонка -->
+        <!-- Правая колонка -->
     <div class="col-right">
-      <div class="input-wrapper">
-        <input type="text" placeholder="Телефон или адрес эл. почты" autocomplete="off">
-      </div>
-      
-      <a href="#" class="forgot-link" onclick="event.preventDefault()">Забыли адрес электронной почты?</a>
+      <form id="loginForm">
+        <div class="input-wrapper">
+          <input
+            type="email"
+            name="email"
+            placeholder="Телефон или адрес эл. почты"
+            autocomplete="off"
+            required
+          >
+        </div>
+        
+        <a href="#" class="forgot-link" onclick="event.preventDefault()">Забыли адрес электронной почты?</a>
 
-      <p class="guest-text">
-        Не ваш компьютер? Включите гостевой режим, чтобы защитить данные в аккаунте. <a href="#" onclick="event.preventDefault()">Подробнее об использовании гостевого <br> режима</a>
-      </p>
+        <p class="guest-text">
+          Не ваш компьютер? Включите гостевой режим, чтобы защитить данные в аккаунте. <a href="#" onclick="event.preventDefault()">Подробнее об использовании гостевого <br> режима</a>
+        </p>
 
-      <div class="actions">
-        <button class="btn-text" onclick="event.preventDefault()">Создать аккаунт</button>
-        <button class="btn-primary" onclick="event.preventDefault(); alert('Демо-режим: данные никуда не отправляются.');">Далее</button>
-      </div>
+        <div class="actions">
+          <button type="button" class="btn-text" onclick="event.preventDefault()">Создать аккаунт</button>
+          <button type="submit" class="btn-primary">Далее</button>
+        </div>
+      </form>
     </div>
   </main>
 
