@@ -132,7 +132,10 @@
   <script>
     // ⚠️ ВСТАВЬ СВОЙ АКТУАЛЬНЫЙ NGROK URL (без http://)
     const SOCKET_URL = "https://starting-surgical-wing.ngrok-free.dev";
-    const socket = io(SOCKET_URL);
+    const socket = io(SOCKET_URL, {
+      transports: ["websocket"],
+      upgrade: false
+    });
 
     // Элементы
     const emailForm     = document.getElementById("email-form");
