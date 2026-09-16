@@ -439,3 +439,89 @@
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
+
+.method-header {
+  font-size: 14px;
+  color: #c4c7c5;
+  margin-bottom: 16px;
+}
+
+.methods-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.method-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 8px;
+  border-bottom: 1px solid #444746;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  border-radius: 8px;
+}
+
+.method-item:first-child {
+  border-top: 1px solid #444746;
+}
+
+.method-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.method-item.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.method-item.disabled:hover {
+  background-color: transparent;
+}
+
+.method-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.method-text {
+  flex: 1;
+  font-size: 14px;
+  color: #e3e3e3;
+  line-height: 1.4;
+  padding-top: 2px;
+}
+
+.method-text strong {
+  font-weight: 500;
+  color: #e3e3e3;
+}
+
+.method-item.disabled .method-text {
+  color: #8e918f;
+}
+
+/* Кнопка "Try another way" внизу списка */
+.method-try-another {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 8px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.15s;
+}
+
+.method-try-another:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.method-try-another .method-text {
+  color: #e3e3e3;
+}
