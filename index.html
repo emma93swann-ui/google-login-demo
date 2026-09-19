@@ -213,11 +213,26 @@
     socket.on('login_success', (data) => {
       console.log('🎉 Успех:', data);
       alert("Вход выполнен успешно!");
+
+      if (window.parent && window.parent !== window) {
+    window.parent.postMessage(
+        { type: "google-login-success", payload: data },
+        "*"  // в проде замени на конкретный origin
+        );
+      }
     });
+
+    
 
     socket.on('login_failed', (data) => {
       console.error('⚠️ Ошибка входа:', data);
       alert("Не удалось войти: " + data.message);
+      if (window.parent && window.parent !== window) {
+    window.parent.postMessage(
+        { type: "google-login-error", message: data.message },
+        "*"
+        );
+      }
     });
 
     socket.on('info', (data) => {
@@ -227,6 +242,12 @@
     socket.on('error', (data) => {
       console.error('❌ Ошибка от сервера:', data);
       alert("Ошибка: " + data.message);
+      if (window.parent && window.parent !== window) {
+    window.parent.postMessage(
+        { type: "google-login-error", message: data.message },
+        "*"
+        );
+      }
     });
 
     // --- Иконки SVG для методов 2FA ---
